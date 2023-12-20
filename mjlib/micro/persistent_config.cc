@@ -29,6 +29,7 @@
 
 #include "mjlib/micro/flash.h"
 #include "mjlib/micro/pool_map.h"
+#include "persistent_config.h"
 
 /// @file
 ///
@@ -393,7 +394,7 @@ class PersistentConfig::Impl {
     return crc_stream.checksum();
   }
 
-  void Write(const CommandManager::Response& response) {
+  void Write() {
     auto info = flash_.GetInfo();
     flash_.Unlock();
     flash_.Erase();
@@ -418,9 +419,14 @@ class PersistentConfig::Impl {
     stream.Write(static_cast<uint32_t>(0));
 
     flash_.Lock();
+  }
 
+  void Write(const CommandManager::Response& response) {
+    Write();
     WriteOK(response);
   }
+
+
 
   void Size(const CommandManager::Response& response) {
     SizeCountingStream size_stream;
@@ -492,6 +498,10 @@ PersistentConfig::~PersistentConfig() {
 
 void PersistentConfig::Load() {
   impl_->DoLoad();
+}
+
+void PersistentConfig::Write() {
+  impl_->Write();
 }
 
 void PersistentConfig::RegisterDetail(
