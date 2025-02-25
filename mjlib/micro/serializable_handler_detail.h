@@ -429,7 +429,76 @@ inline std::string_view ReadArchive::EmitValue<float>(float value) {
   return std::string_view(buffer_.begin(), out_size);
 }
 
+
+struct SimpleReadArchive : public ItemArchive<SimpleReadArchive> {
+  SimpleReadArchive(const std::string_view& key,
+              const base::string_span& buffer)
+      : ItemArchive(key),
+        buffer_(buffer) {
+  }
+
+  template <typename NameValuePair, typename NameMapGetter>
+  void VisitEnumeration(const NameValuePair& pair,
+                        NameMapGetter) {
+    auto out_buffer = EmitValue(static_cast<int32_t>(pair.get_value()));
+
+    value_as_string = out_buffer;
+  }
+
+  template <typename NameValuePair>
+  void VisitScalar(const NameValuePair& pair) {
+    this->VisitHelper(pair, pair.value(), 0);
+  }
+
+  template <typename NameValuePair, typename T>
+  void VisitHelper(const NameValuePair& pair,
+                   std::optional<T>*,
+                   int) {
+    auto maybe_value = pair.get_value();
+    if (!maybe_value) {
+      Empty empty;
+      mjlib::base::VisitArchive<SimpleReadArchive>::Visit(
+          base::ReferenceNameValuePair<Empty>(&empty, pair.name()));
+    } else {
+      auto value = *maybe_value;
+      mjlib::base::VisitArchive<SimpleReadArchive>::Visit(
+          base::ReferenceNameValuePair<decltype(value)>(&value, pair.name()));
+    }
+  }
+
+  template <typename NameValuePair, typename T>
+  void VisitHelper(const NameValuePair& pair,
+                   T*,
+                   long) {
+    auto out_buffer = EmitValue(pair.get_value());
+
+    value_as_string = out_buffer;
+  }
+
+  SimpleReadArchive Make(const std::string_view& key) {
+    return SimpleReadArchive(key, buffer_);
+  }
+
+  template <typename T>
+  std::string_view EmitValue(T value) {
+    const int out_size = ::snprintf(
+        &*buffer_.begin(), buffer_.size(),
+        FormatSpecifier::GetFormat(value), value);
+    return std::string_view(buffer_.begin(), out_size);
+  }
+
+  std::string value_as_string;
+  const base::string_span buffer_;
+};
+
+template <>
+inline std::string_view SimpleReadArchive::EmitValue<float>(float value) {
+  const int out_size = ::snprintf(
+      &*buffer_.begin(), buffer_.size(), "%f",
+      static_cast<double>(value));
+  return std::string_view(buffer_.begin(), out_size);
 }
 
+}  // namespace detail
 }
 }

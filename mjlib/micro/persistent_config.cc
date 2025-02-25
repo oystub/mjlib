@@ -294,6 +294,19 @@ class PersistentConfig::Impl {
     }
   }
 
+  // For internal use on the controller, get a parameter value by name
+  std::string Get(const std::string_view& name) const {
+    base::Tokenizer tokenizer(name, ".");
+    auto group = tokenizer.next();
+    const auto element_it = elements_.find(group);
+    if (element_it == elements_.end()) {
+        return "";
+    }
+    
+    auto& element = element_it->second;
+    return element.serializable->Read(tokenizer.remaining(), output_buffer_);
+}
+
   void Set(const std::string_view& command,
            const CommandManager::Response& response) {
     base::Tokenizer tokenizer(command, ".");
@@ -315,6 +328,24 @@ class PersistentConfig::Impl {
       }
     }
   }
+
+  bool Set(const std::string_view& name, const std::string_view& value) {
+    base::Tokenizer tokenizer(name, ".");
+    auto group = tokenizer.next();
+    const auto element_it = elements_.find(group);
+    if (element_it == elements_.end()) {
+        return false;
+    }
+
+    auto& element = element_it->second;
+    const int result = element.serializable->Set(tokenizer.remaining(), value);
+    if (result == 0) {
+        element.updated();
+        return true;
+    }
+    return false;
+  }
+  
 
   void Load(const CommandManager::Response& response) {
     DoLoad();
@@ -394,6 +425,11 @@ class PersistentConfig::Impl {
   }
 
   void Write(const CommandManager::Response& response) {
+    Write();
+    WriteOK(response);
+  }
+
+  void Write() {
     auto info = flash_.GetInfo();
     flash_.Unlock();
     flash_.Erase();
@@ -418,8 +454,6 @@ class PersistentConfig::Impl {
     stream.Write(static_cast<uint32_t>(0));
 
     flash_.Lock();
-
-    WriteOK(response);
   }
 
   void Size(const CommandManager::Response& response) {
@@ -492,6 +526,18 @@ PersistentConfig::~PersistentConfig() {
 
 void PersistentConfig::Load() {
   impl_->DoLoad();
+}
+
+std::string PersistentConfig::Get(const std::string_view& name) const {
+    return impl_->Get(name);
+}
+
+bool PersistentConfig::Set(const std::string_view& name, const std::string_view& value) {
+    return impl_->Set(name, value);
+}
+
+void PersistentConfig::Write() {
+  impl_->Write();
 }
 
 void PersistentConfig::RegisterDetail(

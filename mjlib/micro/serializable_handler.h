@@ -47,6 +47,9 @@ class SerializableHandlerBase {
                    const base::string_span& buffer,
                    AsyncWriteStream&,
                    ErrorCallback) = 0;
+  virtual std::string Read(const std::string_view& key,
+    const base::string_span& buffer) = 0;
+
   virtual void SetDefault() = 0;
 };
 
@@ -120,6 +123,13 @@ class SerializableHandler : public SerializableHandlerBase {
     detail::ReadArchive archive(key, buffer, stream, callback);
     archive.Accept(item_);
     return archive.found() ? 0 : 1;
+  }
+
+  std::string Read(const std::string_view& key,
+            const base::string_span& buffer) {
+    detail::SimpleReadArchive archive(key, buffer);
+    archive.Accept(item_);
+    return archive.value_as_string;
   }
 
   void SetDefault() override final {

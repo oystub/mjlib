@@ -54,6 +54,17 @@ class PersistentConfig {
   /// register their configurables.
   void Load();
 
+  // Get any param from the store by specifying group and field
+  // Returns an empty string if the field is not found
+  std::string Get(const std::string_view& name) const;
+
+  // Set any param in the store by specifying group and field
+  // Value is passed as a deserializable string
+  bool Set(const std::string_view& name, const std::string_view& value);
+
+  // Write all registered configuration structures to flash.
+  void Write();
+
  private:
   /// This aliases Base, which must remain valid for the lifetime of
   /// the PersistentConfig.
