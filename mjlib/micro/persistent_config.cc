@@ -393,7 +393,7 @@ class PersistentConfig::Impl {
     return crc_stream.checksum();
   }
 
-  void Write(const CommandManager::Response& response) {
+  void Write() {
     auto info = flash_.GetInfo();
     flash_.Unlock();
     flash_.Erase();
@@ -418,7 +418,10 @@ class PersistentConfig::Impl {
     stream.Write(static_cast<uint32_t>(0));
 
     flash_.Lock();
+  }
 
+  void Write(const CommandManager::Response& response) {
+    Write();
     WriteOK(response);
   }
 
@@ -492,6 +495,10 @@ PersistentConfig::~PersistentConfig() {
 
 void PersistentConfig::Load() {
   impl_->DoLoad();
+}
+
+void PersistentConfig::Write() {
+  impl_->Write();
 }
 
 void PersistentConfig::RegisterDetail(

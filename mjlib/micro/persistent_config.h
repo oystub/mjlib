@@ -54,6 +54,9 @@ class PersistentConfig {
   /// register their configurables.
   void Load();
 
+  /// Write all configuration structures to Flash.
+  void Write();
+
  private:
   /// This aliases Base, which must remain valid for the lifetime of
   /// the PersistentConfig.
